@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C Runner</title>
+
+  <!-- CodeMirror 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #121212;
+      --bg2: #1a1a1a;
+      --bg3: #1e1e1e;
+      --border: #2e2e2e;
+      --text: #e0e0e0;
+      --text-muted: #888;
+      --accent: #569cd6;
+      --btn-bg: #2a2a2a;
+      --btn-hover: #3a3a3a;
+      --terminal-h: 220px;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+    }
+
+    /* ── Top bar ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #download-btn {
+      white-space: nowrap;
+      padding: 5px 12px;
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    #download-btn:hover { background: var(--btn-hover); }
+
+    #exercise-label {
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    #exercise-input {
+      flex: 1;
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    #exercise-input:focus { border-color: var(--accent); }
+
+    /* ── Main layout ── */
+    #layout {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #middle {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ── Left column ── */
+    #left-col {
+      display: flex;
+      flex-direction: column;
+      width: 35%;
+      min-width: 260px;
+      border-right: 1px solid var(--border);
+    }
+
+    .pane {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pane:last-child { border-bottom: none; }
+
+    .pane-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+
+    .plain-textarea {
+      flex: 1;
+      resize: none;
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      outline: none;
+      autocomplete: off;
+      spellcheck: false;
+    }
+    .plain-textarea:focus { border-color: var(--accent); }
+
+    /* ── Right column ── */
+    #right-col {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    #editor-pane {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      padding: 8px;
+    }
+
+    #editor-pane .pane-label { flex-shrink: 0; }
+
+    #editor-wrapper {
+      flex: 1;
+      min-height: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .CodeMirror {
+      height: 100% !important;
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* Active line override for monokai */
+    .CodeMirror-activeline-background {
+      background: #1e1e2e !important;
+    }
+
+    /* Squiggly underlines */
+    .cm-error-underline {
+      text-decoration: underline wavy red;
+      text-underline-offset: 2px;
+    }
+    .cm-warning-underline {
+      text-decoration: underline wavy #f0c040;
+      text-underline-offset: 2px;
+    }
+
+    /* ── Terminal ── */
+    #terminal {
+      height: var(--terminal-h);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg3);
+      border-top: 1px solid var(--border);
+    }
+
+    #terminal-topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: #252525;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #run-btn {
+      padding: 4px 14px;
+      background: #1a6b1a;
+      color: #fff;
+      border: 1px solid #2a8a2a;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #run-btn:hover { background: #227a22; }
+    #run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #flags-select {
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+    #flags-select:focus { border-color: var(--accent); }
+    #flags-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #terminal-output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #d4d4d4;
+    }
+
+    .exit-ok  { color: #4ec94e; }
+    .exit-err { color: #f44747; }
+
+    /* ── Error tooltip ── */
+    #err-tooltip {
+      position: fixed;
+      background: #2d2d2d;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+      color: #f48771;
+      pointer-events: none;
+      z-index: 9999;
+      max-width: 400px;
+      display: none;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+<div id="layout">
+  <!-- Top bar -->
+  <div id="topbar">
+    <button id="download-btn">⬇ Download .c</button>
+    <span id="exercise-label">Exercise:</span>
+    <input id="exercise-input" type="text" autocomplete="off" spellcheck="false" placeholder="Describe the exercise…" />
+  </div>
+
+  <!-- Middle: left + right columns -->
+  <div id="middle">
+
+    <!-- Left column -->
+    <div id="left-col">
+      <div class="pane">
+        <div class="pane-label">General Thoughts</div>
+        <textarea class="plain-textarea" id="thoughts-area" autocomplete="off" spellcheck="false" placeholder="Write your thoughts here…"></textarea>
+      </div>
+      <div class="pane">
+        <div class="pane-label">Pseudocode</div>
+        <textarea class="plain-textarea" id="pseudo-area" autocomplete="off" spellcheck="false" placeholder="Write pseudocode here…"></textarea>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div id="right-col">
+      <div id="editor-pane">
+        <div class="pane-label">C Code</div>
+        <div id="editor-wrapper">
+          <textarea id="cm-editor"></textarea>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div id="terminal">
+        <div id="terminal-topbar">
+          <button id="run-btn">▶ Run</button>
+          <select id="flags-select">
+            <option value="gcc|-Wall -Wextra">gcc — Standard</option>
+            <option value="gcc|-Wall -Wextra -Werror -pedantic">gcc — Strict</option>
+            <option value="gcc|-g -Wall">gcc — Debug</option>
+            <option disabled>──────────────</option>
+            <option value="clang|-Wall -Wextra">clang — Standard</option>
+            <option value="clang|-Wall -Wextra -Werror -pedantic">clang — Strict</option>
+            <option value="clang|-g -Wall">clang — Debug</option>
+          </select>
+        </div>
+        <div id="terminal-output"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Error tooltip -->
+<div id="err-tooltip"></div>
+
+<script>
+  // ── CodeMirror setup ──────────────────────────────────────────────────────
+  const editor = CodeMirror.fromTextArea(document.getElementById('cm-editor'), {
+    mode: 'text/x-csrc',
+    theme: 'monokai',
+    lineNumbers: true,
+    gutters: ['CodeMirror-linenumbers'],
+    styleActiveLine: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    extraKeys: { Tab: cm => cm.replaceSelection('    ') }
+  });
+
+  // Default starter code
+  editor.setValue(`#include <stdio.h>\n\nint main(void) {\n    printf("Hello, world!\\n");\n    return 0;\n}\n`);
+
+  // ── Error marks ──────────────────────────────────────────────────────────
+  let activeMarks = [];
+
+  function clearMarks() {
+    activeMarks.forEach(m => m.clear());
+    activeMarks = [];
+  }
+
+  function applyErrors(errors) {
+    clearMarks();
+    errors.forEach(({ line, type, message }) => {
+      const lineIdx = line - 1;
+      const lineCount = editor.lineCount();
+      if (lineIdx < 0 || lineIdx >= lineCount) return;
+      const lineLen = editor.getLine(lineIdx).length;
+      const from = { line: lineIdx, ch: 0 };
+      const to   = { line: lineIdx, ch: lineLen || 1 };
+      const cls  = type === 'warning' ? 'cm-warning-underline' : 'cm-error-underline';
+      const mark = editor.markText(from, to, {
+        className: cls,
+        title: message   // native tooltip as fallback
+      });
+      mark._errMessage = message;
+      activeMarks.push(mark);
+    });
+  }
+
+  // ── Custom tooltip on hover ───────────────────────────────────────────────
+  const tooltip = document.getElementById('err-tooltip');
+
+  editor.getWrapperElement().addEventListener('mousemove', (e) => {
+    const pos = editor.coordsChar({ left: e.clientX, top: e.clientY });
+    const marks = editor.findMarksAt(pos);
+    const errMark = marks.find(m => m._errMessage);
+    if (errMark) {
+      tooltip.textContent = errMark._errMessage;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top  = (e.clientY + 14) + 'px';
+    } else {
+      tooltip.style.display = 'none';
+    }
+  });
+
+  editor.getWrapperElement().addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+
+  // ── Run button ────────────────────────────────────────────────────────────
+  const runBtn    = document.getElementById('run-btn');
+  const output    = document.getElementById('terminal-output');
+  const flagsSel  = document.getElementById('flags-select');
+
+  runBtn.addEventListener('click', async () => {
+    runBtn.disabled = true;
+    flagsSel.disabled = true;
+    output.textContent = 'Running...';
+    clearMarks();
+
+    const code = editor.getValue();
+    const [compiler, flags] = flagsSel.value.split('|');
+
+    try {
+      const res  = await fetch('/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, compiler, flags })
+      });
+      const data = await res.json();
+
+      output.textContent = data.output || '';
+
+      // Append exit code line
+      const exitLine = document.createElement('span');
+      exitLine.textContent = `\n[Exit code: ${data.exitCode}]`;
+      exitLine.className = data.exitCode === 0 ? 'exit-ok' : 'exit-err';
+      output.appendChild(exitLine);
+
+      if (data.errors && data.errors.length > 0) {
+        applyErrors(data.errors);
+      }
+    } catch (err) {
+      output.textContent = 'Failed to reach server: ' + err.message;
+    } finally {
+      runBtn.disabled = false;
+      flagsSel.disabled = false;
+      output.scrollTop = output.scrollHeight;
+    }
+  });
+
+  // ── Download button ───────────────────────────────────────────────────────
+  document.getElementById('download-btn').addEventListener('click', () => {
+    const exercise = document.getElementById('exercise-input').value;
+    const thoughts = document.getElementById('thoughts-area').value;
+    const pseudo   = document.getElementById('pseudo-area').value;
+    const ccode    = editor.getValue();
+
+    const header = `/*\nExercise:\n${exercise}\n\nThought Process:\n${thoughts}\n\nPseudocode:\n${pseudo}\n*/\n\n`;
+    const content = header + ccode;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'solution.c';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+</body>
+</html>
