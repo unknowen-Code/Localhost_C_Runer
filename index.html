@@ -271,6 +271,8 @@
   <!-- Top bar -->
   <div id="topbar">
     <button id="download-btn">⬇ Download .c</button>
+    <button id="open-btn">📂 Open .c</button>
+    <input type="file" id="file-input" accept=".c" style="display:none">
     <span id="exercise-label">Exercise:</span>
     <input id="exercise-input" type="text" autocomplete="off" spellcheck="false" placeholder="Describe the exercise…" />
   </div>
@@ -428,6 +430,36 @@
       flagsSel.disabled = false;
       output.scrollTop = output.scrollHeight;
     }
+  });
+
+  // ── Open .c file ──────────────────────────────────────────────────────────
+  document.getElementById('open-btn').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+  });
+
+  document.getElementById('file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target.result;
+      const headerMatch = text.match(/^\/\*\nExercise:\n([\s\S]*?)\n\nThought Process:\n([\s\S]*?)\n\nPseudocode:\n([\s\S]*?)\n\*\/\n\n?([\s\S]*)$/);
+      if (headerMatch) {
+        document.getElementById('exercise-input').value = headerMatch[1];
+        document.getElementById('thoughts-area').value  = headerMatch[2];
+        document.getElementById('pseudo-area').value    = headerMatch[3];
+        editor.setValue(headerMatch[4]);
+      } else {
+        // Plain .c file — put everything in the editor
+        document.getElementById('exercise-input').value = '';
+        document.getElementById('thoughts-area').value  = '';
+        document.getElementById('pseudo-area').value    = '';
+        editor.setValue(text);
+      }
+      editor.clearHistory();
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset so same file can be reopened
   });
 
   // ── Download button ───────────────────────────────────────────────────────
