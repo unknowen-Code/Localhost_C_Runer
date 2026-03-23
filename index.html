@@ -42,14 +42,14 @@
     #topbar {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       padding: 8px 12px;
       background: var(--bg2);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
 
-    #download-btn {
+    #download-btn, #open-btn, #new-btn {
       white-space: nowrap;
       padding: 5px 12px;
       background: var(--btn-bg);
@@ -59,7 +59,7 @@
       cursor: pointer;
       font-size: 13px;
     }
-    #download-btn:hover { background: var(--btn-hover); }
+    #download-btn:hover, #open-btn:hover, #new-btn:hover { background: var(--btn-hover); }
 
     #exercise-label {
       color: var(--text-muted);
@@ -77,6 +77,98 @@
       outline: none;
     }
     #exercise-input:focus { border-color: var(--accent); }
+
+    /* ── View dropdown ── */
+    .view-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    #view-btn {
+      white-space: nowrap;
+      padding: 5px 12px;
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    #view-btn:hover { background: var(--btn-hover); }
+
+    .view-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      min-width: 175px;
+      z-index: 100;
+      padding: 4px 0;
+    }
+    .view-dropdown.open { display: block; }
+
+    .view-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      user-select: none;
+    }
+    .view-dropdown-item:hover { background: var(--btn-hover); }
+    .view-dropdown-item input[type="checkbox"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    /* ── Timer widget ── */
+    #timer-widget {
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      /* display is toggled by JS */
+    }
+
+    #timer-display {
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 14px;
+      color: var(--accent);
+      min-width: 42px;
+      text-align: center;
+    }
+
+    #timer-start-btn, #timer-reset-btn {
+      padding: 4px 9px;
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #timer-start-btn:hover, #timer-reset-btn:hover { background: var(--btn-hover); }
+
+    #timer-target-input {
+      width: 46px;
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 12px;
+      text-align: center;
+      outline: none;
+    }
+    #timer-target-input:focus { border-color: var(--accent); }
+    #timer-target-input::placeholder { color: var(--text-muted); }
 
     /* ── Main layout ── */
     #layout {
@@ -99,6 +191,8 @@
       width: 35%;
       min-width: 260px;
       border-right: 1px solid var(--border);
+      transition: width 0.15s, min-width 0.15s;
+      overflow: hidden;
     }
 
     .pane {
@@ -136,6 +230,39 @@
       spellcheck: false;
     }
     .plain-textarea:focus { border-color: var(--accent); }
+
+    /* ── Complexity pane ── */
+    #complexity-pane {
+      flex: 0 !important;
+      flex-shrink: 0;
+    }
+
+    .complexity-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .complexity-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .complexity-input {
+      flex: 1;
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 13px;
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      outline: none;
+      min-width: 0;
+    }
+    .complexity-input:focus { border-color: var(--accent); }
 
     /* ── Right column ── */
     #right-col {
@@ -273,8 +400,34 @@
     <button id="download-btn">⬇ Download .c</button>
     <button id="open-btn">📂 Open .c</button>
     <input type="file" id="file-input" accept=".c" style="display:none">
+    <button id="new-btn">➕ New</button>
     <span id="exercise-label">Exercise:</span>
     <input id="exercise-input" type="text" autocomplete="off" spellcheck="false" placeholder="Describe the exercise…" />
+    <!-- View dropdown -->
+    <div class="view-wrapper">
+      <button id="view-btn">View ▾</button>
+      <div class="view-dropdown" id="view-dropdown">
+        <label class="view-dropdown-item" data-panel="thoughts">
+          <input type="checkbox" id="panel-thoughts-cb" checked> General Thoughts
+        </label>
+        <label class="view-dropdown-item" data-panel="pseudo">
+          <input type="checkbox" id="panel-pseudo-cb" checked> Pseudocode
+        </label>
+        <label class="view-dropdown-item" data-panel="complexity">
+          <input type="checkbox" id="panel-complexity-cb"> Complexity
+        </label>
+        <label class="view-dropdown-item" data-panel="timer">
+          <input type="checkbox" id="panel-timer-cb"> Timer
+        </label>
+      </div>
+    </div>
+    <!-- Timer widget (shown when Timer panel is enabled) -->
+    <div id="timer-widget" style="display:none">
+      <span id="timer-display">00:00</span>
+      <button id="timer-start-btn">▶ Start</button>
+      <button id="timer-reset-btn">↺</button>
+      <input id="timer-target-input" type="number" min="1" max="120" placeholder="min">
+    </div>
   </div>
 
   <!-- Middle: left + right columns -->
@@ -282,13 +435,22 @@
 
     <!-- Left column -->
     <div id="left-col">
-      <div class="pane">
+      <div class="pane" id="thoughts-pane">
         <div class="pane-label">General Thoughts</div>
         <textarea class="plain-textarea" id="thoughts-area" autocomplete="off" spellcheck="false" placeholder="Write your thoughts here…"></textarea>
       </div>
-      <div class="pane">
+      <div class="pane" id="pseudo-pane">
         <div class="pane-label">Pseudocode</div>
         <textarea class="plain-textarea" id="pseudo-area" autocomplete="off" spellcheck="false" placeholder="Write pseudocode here…"></textarea>
+      </div>
+      <div class="pane" id="complexity-pane" style="display:none">
+        <div class="pane-label">Complexity</div>
+        <div class="complexity-row">
+          <span class="complexity-label">Time</span>
+          <input class="complexity-input" id="time-o" type="text" placeholder="O(n²)" autocomplete="off" spellcheck="false">
+          <span class="complexity-label">Space</span>
+          <input class="complexity-input" id="space-o" type="text" placeholder="O(1)" autocomplete="off" spellcheck="false">
+        </div>
       </div>
     </div>
 
@@ -336,11 +498,133 @@
     indentUnit: 4,
     tabSize: 4,
     indentWithTabs: false,
-    extraKeys: { Tab: cm => cm.replaceSelection('    ') }
+    extraKeys: {
+      Tab: cm => cm.replaceSelection('    '),
+      'Ctrl-Enter': () => document.getElementById('run-btn').click()
+    }
   });
 
-  // Default starter code
-  editor.setValue(`#include <stdio.h>\n\nint main(void) {\n    printf("Hello, world!\\n");\n    return 0;\n}\n`);
+  // ── Panel system ──────────────────────────────────────────────────────────
+  const PANEL_DEFAULTS = { thoughts: true, pseudo: true, complexity: false, timer: false };
+
+  function loadPanels() {
+    try { return { ...PANEL_DEFAULTS, ...JSON.parse(localStorage.getItem('c-runner-panels') || '{}') }; }
+    catch { return { ...PANEL_DEFAULTS }; }
+  }
+
+  function savePanelPrefs(panels) {
+    localStorage.setItem('c-runner-panels', JSON.stringify(panels));
+  }
+
+  function applyPanels(panels) {
+    // Show/hide left-column panes
+    document.getElementById('thoughts-pane').style.display    = panels.thoughts   ? 'flex' : 'none';
+    document.getElementById('pseudo-pane').style.display      = panels.pseudo     ? 'flex' : 'none';
+    document.getElementById('complexity-pane').style.display  = panels.complexity ? 'flex' : 'none';
+
+    // Collapse left column entirely if all left panels are hidden
+    const anyLeft = panels.thoughts || panels.pseudo || panels.complexity;
+    const leftCol = document.getElementById('left-col');
+    leftCol.style.width    = anyLeft ? '35%'  : '0';
+    leftCol.style.minWidth = anyLeft ? '260px': '0';
+    leftCol.style.borderRight = anyLeft ? '1px solid var(--border)' : 'none';
+
+    // Show/hide timer widget
+    const timerWidget = document.getElementById('timer-widget');
+    timerWidget.style.display = panels.timer ? 'flex' : 'none';
+
+    // Sync checkboxes
+    document.getElementById('panel-thoughts-cb').checked    = panels.thoughts;
+    document.getElementById('panel-pseudo-cb').checked      = panels.pseudo;
+    document.getElementById('panel-complexity-cb').checked  = panels.complexity;
+    document.getElementById('panel-timer-cb').checked       = panels.timer;
+  }
+
+  let currentPanels = loadPanels();
+  applyPanels(currentPanels);
+
+  // View button dropdown toggle
+  const viewBtn      = document.getElementById('view-btn');
+  const viewDropdown = document.getElementById('view-dropdown');
+
+  viewBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    viewDropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', () => viewDropdown.classList.remove('open'));
+  viewDropdown.addEventListener('click', e => e.stopPropagation());
+
+  // Panel checkbox changes
+  document.querySelectorAll('.view-dropdown-item').forEach(item => {
+    const cb = item.querySelector('input[type="checkbox"]');
+    cb.addEventListener('change', () => {
+      const panel = item.dataset.panel;
+      currentPanels[panel] = cb.checked;
+      savePanelPrefs(currentPanels);
+      applyPanels(currentPanels);
+    });
+  });
+
+  // ── Session auto-save ─────────────────────────────────────────────────────
+  const DEFAULT_CODE = `#include <stdio.h>\n\nint main(void) {\n    printf("Hello, world!\\n");\n    return 0;\n}\n`;
+
+  function loadSession() {
+    try { return JSON.parse(localStorage.getItem('c-runner-session') || 'null'); }
+    catch { return null; }
+  }
+
+  function saveSession() {
+    const session = {
+      exercise: document.getElementById('exercise-input').value,
+      thoughts:  document.getElementById('thoughts-area').value,
+      pseudo:    document.getElementById('pseudo-area').value,
+      code:      editor.getValue(),
+      flags:     document.getElementById('flags-select').value,
+      timeO:     document.getElementById('time-o').value,
+      spaceO:    document.getElementById('space-o').value,
+    };
+    localStorage.setItem('c-runner-session', JSON.stringify(session));
+  }
+
+  let saveTimer = null;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveSession, 600);
+  }
+
+  // Restore session on load, or set defaults
+  const session = loadSession();
+  if (session) {
+    document.getElementById('exercise-input').value = session.exercise || '';
+    document.getElementById('thoughts-area').value  = session.thoughts  || '';
+    document.getElementById('pseudo-area').value    = session.pseudo    || '';
+    document.getElementById('time-o').value         = session.timeO     || '';
+    document.getElementById('space-o').value        = session.spaceO    || '';
+    if (session.flags) document.getElementById('flags-select').value = session.flags;
+    editor.setValue(session.code || DEFAULT_CODE);
+  } else {
+    editor.setValue(DEFAULT_CODE);
+  }
+
+  // Attach save triggers
+  ['exercise-input', 'thoughts-area', 'pseudo-area', 'time-o', 'space-o'].forEach(id => {
+    document.getElementById(id).addEventListener('input', scheduleSave);
+  });
+  document.getElementById('flags-select').addEventListener('change', scheduleSave);
+  editor.on('change', scheduleSave);
+
+  // ── New button ────────────────────────────────────────────────────────────
+  document.getElementById('new-btn').addEventListener('click', () => {
+    localStorage.removeItem('c-runner-session');
+    document.getElementById('exercise-input').value = '';
+    document.getElementById('thoughts-area').value  = '';
+    document.getElementById('pseudo-area').value    = '';
+    document.getElementById('time-o').value         = '';
+    document.getElementById('space-o').value        = '';
+    document.getElementById('flags-select').value   = 'gcc|-Wall -Wextra';
+    editor.setValue(DEFAULT_CODE);
+    editor.clearHistory();
+  });
 
   // ── Error marks ──────────────────────────────────────────────────────────
   let activeMarks = [];
@@ -391,9 +675,9 @@
   });
 
   // ── Run button ────────────────────────────────────────────────────────────
-  const runBtn    = document.getElementById('run-btn');
-  const output    = document.getElementById('terminal-output');
-  const flagsSel  = document.getElementById('flags-select');
+  const runBtn   = document.getElementById('run-btn');
+  const output   = document.getElementById('terminal-output');
+  const flagsSel = document.getElementById('flags-select');
 
   runBtn.addEventListener('click', async () => {
     runBtn.disabled = true;
@@ -432,6 +716,14 @@
     }
   });
 
+  // ── Ctrl+Enter from anywhere outside the editor ───────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      runBtn.click();
+    }
+  });
+
   // ── Open .c file ──────────────────────────────────────────────────────────
   document.getElementById('open-btn').addEventListener('click', () => {
     document.getElementById('file-input').click();
@@ -443,20 +735,28 @@
     const reader = new FileReader();
     reader.onload = ev => {
       const text = ev.target.result;
-      const headerMatch = text.match(/^\/\*\nExercise:\n([\s\S]*?)\n\nThought Process:\n([\s\S]*?)\n\nPseudocode:\n([\s\S]*?)\n\*\/\n\n?([\s\S]*)$/);
+      // Match header with optional Time/Space Complexity sections (backward-compatible)
+      const headerMatch = text.match(
+        /^\/\*\nExercise:\n([\s\S]*?)\n\nThought Process:\n([\s\S]*?)\n\nPseudocode:\n([\s\S]*?)(?:\n\nTime Complexity:\n([\s\S]*?))?(?:\n\nSpace Complexity:\n([\s\S]*?))?\n\*\/\n\n?([\s\S]*)$/
+      );
       if (headerMatch) {
-        document.getElementById('exercise-input').value = headerMatch[1];
-        document.getElementById('thoughts-area').value  = headerMatch[2];
-        document.getElementById('pseudo-area').value    = headerMatch[3];
-        editor.setValue(headerMatch[4]);
+        document.getElementById('exercise-input').value = headerMatch[1] || '';
+        document.getElementById('thoughts-area').value  = headerMatch[2] || '';
+        document.getElementById('pseudo-area').value    = headerMatch[3] || '';
+        document.getElementById('time-o').value         = headerMatch[4] || '';
+        document.getElementById('space-o').value        = headerMatch[5] || '';
+        editor.setValue(headerMatch[6] || '');
       } else {
         // Plain .c file — put everything in the editor
         document.getElementById('exercise-input').value = '';
         document.getElementById('thoughts-area').value  = '';
         document.getElementById('pseudo-area').value    = '';
+        document.getElementById('time-o').value         = '';
+        document.getElementById('space-o').value        = '';
         editor.setValue(text);
       }
       editor.clearHistory();
+      saveSession(); // persist the opened file immediately
     };
     reader.readAsText(file);
     e.target.value = ''; // reset so same file can be reopened
@@ -467,9 +767,11 @@
     const exercise = document.getElementById('exercise-input').value;
     const thoughts = document.getElementById('thoughts-area').value;
     const pseudo   = document.getElementById('pseudo-area').value;
+    const timeO    = document.getElementById('time-o').value;
+    const spaceO   = document.getElementById('space-o').value;
     const ccode    = editor.getValue();
 
-    const header = `/*\nExercise:\n${exercise}\n\nThought Process:\n${thoughts}\n\nPseudocode:\n${pseudo}\n*/\n\n`;
+    const header = `/*\nExercise:\n${exercise}\n\nThought Process:\n${thoughts}\n\nPseudocode:\n${pseudo}\n\nTime Complexity:\n${timeO}\n\nSpace Complexity:\n${spaceO}\n*/\n\n`;
     const content = header + ccode;
 
     const blob = new Blob([content], { type: 'text/plain' });
@@ -479,6 +781,70 @@
     a.download = 'solution.c';
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  let timerInterval = null;
+  let timerElapsed  = 0;      // ms accumulated
+  let timerRunning  = false;
+
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+    const s = (totalSec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function updateTimerDisplay() {
+    const display     = document.getElementById('timer-display');
+    const targetInput = document.getElementById('timer-target-input');
+    const targetMin   = parseFloat(targetInput.value);
+
+    if (!isNaN(targetMin) && targetMin > 0) {
+      // Countdown mode
+      const targetMs  = targetMin * 60 * 1000;
+      const remaining = Math.max(0, targetMs - timerElapsed);
+      display.textContent = formatTime(remaining);
+      display.style.color = remaining === 0 ? '#f44747' : 'var(--accent)';
+      if (remaining === 0 && timerRunning) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerRunning  = false;
+        document.getElementById('timer-start-btn').textContent = '▶ Start';
+      }
+    } else {
+      // Count-up mode
+      display.textContent = formatTime(timerElapsed);
+      display.style.color = 'var(--accent)';
+    }
+  }
+
+  document.getElementById('timer-start-btn').addEventListener('click', () => {
+    const btn = document.getElementById('timer-start-btn');
+    if (timerRunning) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerRunning  = false;
+      btn.textContent = '▶ Start';
+    } else {
+      const startTime = Date.now() - timerElapsed;
+      timerInterval = setInterval(() => {
+        timerElapsed = Date.now() - startTime;
+        updateTimerDisplay();
+      }, 500);
+      timerRunning = true;
+      btn.textContent = '⏸ Pause';
+    }
+  });
+
+  document.getElementById('timer-reset-btn').addEventListener('click', () => {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    timerRunning  = false;
+    timerElapsed  = 0;
+    document.getElementById('timer-start-btn').textContent = '▶ Start';
+    document.getElementById('timer-display').style.color = 'var(--accent)';
+    updateTimerDisplay();
   });
 </script>
 </body>
