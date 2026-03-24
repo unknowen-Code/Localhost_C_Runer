@@ -44,12 +44,43 @@ Practice on real past UZH exam questions extracted from PDF files.
 
 1. Place past exam PDFs in `Old_Excames/`
    - Naming: `FinalExam2022.pdf`, `Solution2022.pdf` (years 2022–2024)
-     cd "Localhost_C_run"
 2. Run `npm run parse` once to generate `Mock_Exam/questions.json`
 3. Start the server: `npm start`
 4. Open **http://localhost:3000/exam** or click **Mock Exam →** in the main tool
 
 Features: random or specific question mode, per-question timer, C code editor + terminal, side-by-side solution comparison, and `.c` file download with your notes.
+
+---
+
+## Lecture Exercises Mode
+
+Practice custom exercises generated from lecture slides (e.g. via NotebookLM).
+
+1. Create `exercises.json` in the project root
+2. Paste in your exercises as a JSON array — each entry has these fields:
+
+```json
+{
+  "id": 1,
+  "lecture": "sl01",
+  "chapter": 3,
+  "chapterName": "Sorting",
+  "title": "Bubble Sort",
+  "difficulty": "easy",
+  "type": "c_code",
+  "recMinutes": 10,
+  "questionText": "...",
+  "solutionText": ""
+}
+```
+
+- `difficulty`: `"easy"`, `"hard"`, or `"single"`
+- `type`: `"c_code"`, `"pseudocode"`, `"both"`, or `"open"`
+- Two-part chapters → two entries (one `easy`, one `hard`)
+- `exercises.json` is gitignored — stays local only
+
+3. Start the server: `npm start`
+4. Open **http://localhost:3000/exercises** or click **Exercises →** in the main tool
 
 ---
 
