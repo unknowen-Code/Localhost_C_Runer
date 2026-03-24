@@ -1,12 +1,12 @@
 // parse_exams.js — run once with: npm run parse
-// Reads exam and solution PDFs from Old_Excames/, extracts typed questions,
+// Reads exam and solution PDFs from Old_Exames/, extracts typed questions,
 // saves results to Mock_Exam/questions.json
 
 const fs      = require('fs');
 const path    = require('path');
 const pdfParse = require('pdf-parse');
 
-const EXAMS_DIR = path.join(__dirname, '..', 'Old_Excames');
+const EXAMS_DIR = path.join(__dirname, '..', 'Old_Exames');
 const OUT_FILE  = path.join(__dirname, 'questions.json');
 const YEARS     = ['2022', '2023', '2024'];
 
@@ -109,7 +109,7 @@ function findSolution(solBlocks, questionNumber) {
 
 async function main() {
   if (!fs.existsSync(EXAMS_DIR)) {
-    console.error(`ERROR: Old_Excames/ directory not found at:\n  ${EXAMS_DIR}`);
+    console.error(`ERROR: Old_Exames/ directory not found at:\n  ${EXAMS_DIR}`);
     process.exit(1);
   }
 
