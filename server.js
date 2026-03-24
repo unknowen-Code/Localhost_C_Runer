@@ -100,8 +100,21 @@ app.get('/api/questions', (req, res) => {
   res.sendFile(qPath);
 });
 
+app.get('/exercises', (req, res) => {
+  res.sendFile(path.join(__dirname, 'exercises.html'));
+});
+
+app.get('/api/exercises', (req, res) => {
+  const ePath = path.join(__dirname, 'exercises.json');
+  if (!fs.existsSync(ePath)) {
+    return res.status(404).json({ error: 'exercises.json not found.' });
+  }
+  res.sendFile(ePath);
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`C runner listening at http://localhost:${PORT}`);
   console.log(`Mock Exam at http://localhost:${PORT}/exam`);
+  console.log(`Exercises at http://localhost:${PORT}/exercises`);
 });

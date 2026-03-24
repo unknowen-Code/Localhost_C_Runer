@@ -49,7 +49,7 @@
       flex-shrink: 0;
     }
 
-    #download-btn, #open-btn, #new-btn, #exam-link {
+    #download-btn, #open-btn, #new-btn, #exam-link, #exercises-link {
       white-space: nowrap;
       padding: 5px 12px;
       background: var(--btn-bg);
@@ -63,8 +63,8 @@
       align-items: center;
     }
     #download-btn:hover, #open-btn:hover, #new-btn:hover { background: var(--btn-hover); }
-    #exam-link { border-color: #3a5a7a; color: var(--accent); }
-    #exam-link:hover { background: var(--btn-hover); }
+    #exam-link, #exercises-link { border-color: #3a5a7a; color: var(--accent); }
+    #exam-link:hover, #exercises-link:hover { background: var(--btn-hover); }
 
     #exercise-label {
       color: var(--text-muted);
@@ -427,6 +427,7 @@
       </div>
     </div>
     <a href="/exam" id="exam-link">Mock Exam →</a>
+    <a href="/exercises" id="exercises-link">Exercises →</a>
     <!-- Timer widget (shown when Timer panel is enabled) -->
     <div id="timer-widget" style="display:none">
       <span id="timer-display">00:00</span>
