@@ -1,12 +1,14 @@
 {
   "name": "localhost-c-runner",
   "version": "1.0.0",
-  "description": "Local C code runner with syntax highlighting and gcc error annotations",
+  "description": "Local C code runner with syntax highlighting, gcc error annotations, and mock exam mode",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "parse": "node Mock_Exam/parse_exams.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "pdf-parse": "^1.1.1"
   }
 }

@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock Exam — C Runner</title>
+
+  <!-- CodeMirror 5 (same as main tool) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+
+  <style>
+    /* ── CSS Variables ────────────────────────────────────────────────────── */
+    :root {
+      --bg:        #121212;
+      --bg2:       #1a1a1a;
+      --bg3:       #1e1e1e;
+      --border:    #2e2e2e;
+      --text:      #e0e0e0;
+      --text-muted:#888;
+      --accent:    #569cd6;
+      --btn-bg:    #2a2a2a;
+      --btn-hover: #3a3a3a;
+      --paper-bg:  #f5f5f0;
+      --paper-text:#1a1a1a;
+      --paper-border: #ccc;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+    }
+
+    /* ── Shared utilities ─────────────────────────────────────────────────── */
+    .screen {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 14px;
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn:hover { background: var(--btn-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary { background: #1a5a8a; border-color: #2a7aaa; color: #fff; }
+    .btn-primary:hover { background: #1e6fa0; }
+
+    .btn-green { background: #1a6b1a; border-color: #2a8a2a; color: #fff; font-weight: 600; }
+    .btn-green:hover { background: #227a22; }
+
+    /* ── Question table (shared between selection and picker) ─────────────── */
+    .q-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .q-table th {
+      text-align: left;
+      padding: 7px 10px;
+      background: var(--bg3);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .q-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .q-table tbody tr:hover td { background: var(--bg3); }
+    .q-table tbody tr.row-skipped td { opacity: 0.38; }
+
+    .type-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .type-badge.c_code     { border-color: #569cd6; color: #569cd6; }
+    .type-badge.pseudocode { border-color: #4ec94e; color: #4ec94e; }
+    .type-badge.both       { border-color: #ce9178; color: #ce9178; }
+    .type-badge.open       { border-color: #888;    color: #888; }
+
+    .skip-toggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-muted);
+      user-select: none;
+    }
+    .skip-toggle input {
+      accent-color: #f44747;
+      cursor: pointer;
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ── Squiggly error underlines (CodeMirror) ───────────────────────────── */
+    .cm-error-underline {
+      text-decoration: underline wavy red;
+      text-underline-offset: 2px;
+    }
+    .cm-warning-underline {
+      text-decoration: underline wavy #f0c040;
+      text-underline-offset: 2px;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       ERROR SCREEN
+    ════════════════════════════════════════════════════════════════════════ */
+    #error-screen {
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+      padding: 30px;
+    }
+    #error-screen h2 { font-size: 18px; margin-bottom: 4px; }
+    #error-screen p  { color: var(--text-muted); font-size: 13px; }
+    #error-screen code {
+      display: inline-block;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 7px 16px;
+      font-family: 'Consolas', monospace;
+      font-size: 14px;
+      color: #4ec94e;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       SELECTION SCREEN
+    ════════════════════════════════════════════════════════════════════════ */
+    #sel-topbar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #sel-topbar h1 { font-size: 16px; font-weight: 600; }
+
+    #mode-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .mode-label { font-size: 13px; color: var(--text-muted); }
+
+    .mode-btn {
+      padding: 5px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--btn-bg);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .mode-btn:hover:not(.active) { background: var(--btn-hover); }
+
+    #q-table-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    #sel-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #sel-count { color: var(--text-muted); font-size: 13px; }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       QUESTION SCREEN
+    ════════════════════════════════════════════════════════════════════════ */
+    #exam-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #q-header {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #timer-area { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    #timer-display {
+      font-family: 'Consolas', monospace;
+      font-size: 15px;
+      color: var(--accent);
+      min-width: 50px;
+      transition: color 0.3s;
+    }
+    #timer-display.warn   { color: #d4a800; }
+    #timer-display.danger { color: #f44747; }
+    #timer-rec { font-size: 12px; color: var(--text-muted); }
+
+    /* Question panel — paper style */
+    #q-panel {
+      background: var(--paper-bg);
+      color: var(--paper-text);
+      padding: 18px 28px;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 14px;
+      line-height: 1.75;
+      max-height: 38vh;
+      overflow-y: auto;
+      border-bottom: 2px solid var(--paper-border);
+      flex-shrink: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Answer area */
+    #answer-area {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #answer-left {
+      display: flex;
+      flex-direction: column;
+      width: 35%;
+      min-width: 0;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    #answer-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .a-pane {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .a-pane:last-child { border-bottom: none; }
+
+    .a-pane-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+    .a-textarea {
+      flex: 1;
+      resize: none;
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      outline: none;
+    }
+    .a-textarea:focus { border-color: var(--accent); }
+
+    #editor-pane { border-bottom: none !important; }
+
+    #editor-wrapper {
+      flex: 1;
+      min-height: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .CodeMirror {
+      height: 100% !important;
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .CodeMirror-activeline-background { background: #1e1e2e !important; }
+
+    /* Terminal */
+    #exam-terminal {
+      height: 175px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg3);
+      border-top: 1px solid var(--border);
+    }
+    #exam-terminal-topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      background: #252525;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #exam-run-btn {
+      padding: 4px 14px;
+      background: #1a6b1a;
+      color: #fff;
+      border: 1px solid #2a8a2a;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #exam-run-btn:hover    { background: #227a22; }
+    #exam-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #exam-flags-sel {
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+    #exam-flags-sel:disabled { opacity: 0.5; }
+    #exam-terminal-out {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #d4d4d4;
+    }
+    .exit-ok  { color: #4ec94e; }
+    .exit-err { color: #f44747; }
+
+    /* Action bar */
+    #action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       SOLUTION SCREEN
+    ════════════════════════════════════════════════════════════════════════ */
+    #sol-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #sol-q-header { flex: 1; font-size: 14px; font-weight: 600; }
+    #sol-timer-frozen {
+      font-family: 'Consolas', monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    #comparison-area { flex: 1; min-height: 0; display: flex; }
+
+    #user-side {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+      border-right: 2px solid var(--paper-border);
+      background: var(--bg);
+    }
+    #sol-side {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 22px;
+      background: var(--paper-bg);
+      color: var(--paper-text);
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 14px;
+      line-height: 1.75;
+      word-break: break-word;
+    }
+
+    .sol-prose {
+      white-space: pre-wrap;
+      margin-bottom: 6px;
+    }
+    .sol-code {
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      background: #e8e8e2;
+      color: #1a1a1a;
+      border: 1px solid #bbb;
+      border-left: 3px solid #888;
+      border-radius: 3px;
+      padding: 10px 12px;
+      margin: 8px 0;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .side-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    #user-side .side-label { color: var(--text-muted); border-color: var(--border); }
+    #sol-side  .side-label { color: #666; border-color: #bbb; }
+
+    .ans-section { margin-bottom: 14px; }
+    .ans-section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .ans-block {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ans-block.code {
+      font-family: 'Consolas', 'Fira Mono', monospace;
+      font-size: 12.5px;
+    }
+
+    #sol-action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 10px 16px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       PICKER OVERLAY (Specific mode)
+    ════════════════════════════════════════════════════════════════════════ */
+    #picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.78);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #picker-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: min(740px, 92vw);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #picker-header h2 { font-size: 14px; font-weight: 600; }
+    #picker-table-wrap { flex: 1; overflow-y: auto; }
+
+    .q-table tbody tr.picker-row { cursor: pointer; }
+    .q-table tbody tr.picker-row:hover td { background: #1e2e3e; }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       SESSION COMPLETE SCREEN
+    ════════════════════════════════════════════════════════════════════════ */
+    #complete-screen {
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      text-align: center;
+      padding: 40px;
+    }
+    #complete-screen h2 { font-size: 22px; }
+    #complete-stats { font-size: 14px; color: var(--text-muted); line-height: 1.9; }
+    #complete-btns  { display: flex; gap: 10px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Error screen ──────────────────────────────────────────────────────── -->
+<div id="error-screen" class="screen" style="display:none">
+  <h2>Questions not found</h2>
+  <p>Run the parser first to extract questions from your exam PDFs:</p>
+  <code>npm run parse</code>
+  <p>Place PDFs in <strong>Old_Excames/</strong> before running — see README for naming.</p>
+  <a href="/" class="btn" style="margin-top:6px">← Main Tool</a>
+</div>
+
+<!-- ── Session complete screen ───────────────────────────────────────────── -->
+<div id="complete-screen" class="screen" style="display:none">
+  <h2>Session Complete</h2>
+  <div id="complete-stats"></div>
+  <div id="complete-btns">
+    <button class="btn btn-primary" id="restart-btn">Start New Session</button>
+    <a href="/" class="btn">← Main Tool</a>
+  </div>
+</div>
+
+<!-- ── Selection screen ──────────────────────────────────────────────────── -->
+<div id="selection-screen" class="screen" style="display:none">
+  <div id="sel-topbar">
+    <a href="/" class="btn">← Main Tool</a>
+    <h1>Mock Exam</h1>
+  </div>
+  <div id="mode-bar">
+    <span class="mode-label">Mode:</span>
+    <button class="mode-btn active" data-mode="random">Random</button>
+    <button class="mode-btn" data-mode="specific">Specific</button>
+    <span class="mode-label" id="mode-desc" style="margin-left:6px">
+      Questions are drawn randomly from the pool each time.
+    </span>
+  </div>
+  <div id="q-table-wrap">
+    <table class="q-table">
+      <thead>
+        <tr>
+          <th>Year</th><th>Q#</th><th>Title</th><th>Points</th><th>Type</th><th>Skip</th>
+        </tr>
+      </thead>
+      <tbody id="sel-tbody"></tbody>
+    </table>
+  </div>
+  <div id="sel-footer">
+    <span id="sel-count"></span>
+    <button class="btn btn-primary" id="start-btn">Start Exam →</button>
+  </div>
+</div>
+
+<!-- ── Question screen ───────────────────────────────────────────────────── -->
+<div id="question-screen" class="screen" style="display:none">
+  <div id="exam-topbar">
+    <a href="/" class="btn">← Main Tool</a>
+    <span id="q-header">—</span>
+    <div id="timer-area">
+      <span id="timer-display">00:00</span>
+      <span id="timer-rec"></span>
+    </div>
+    <button class="btn" id="dl-btn">⬇ Download .c</button>
+  </div>
+
+  <div id="q-panel"></div>
+
+  <div id="answer-area">
+    <div id="answer-left">
+      <div class="a-pane" id="thoughts-pane">
+        <div class="a-pane-label">General Thoughts</div>
+        <textarea class="a-textarea" id="thoughts-ta" autocomplete="off" spellcheck="false"
+          placeholder="Write your thoughts here…"></textarea>
+      </div>
+      <div class="a-pane" id="pseudo-pane">
+        <div class="a-pane-label">Pseudocode</div>
+        <textarea class="a-textarea" id="pseudo-ta" autocomplete="off" spellcheck="false"
+          placeholder="Write pseudocode here…"></textarea>
+      </div>
+    </div>
+    <div id="answer-right">
+      <div class="a-pane" id="editor-pane">
+        <div class="a-pane-label">C Code</div>
+        <div id="editor-wrapper">
+          <textarea id="cm-editor"></textarea>
+        </div>
+      </div>
+      <div id="exam-terminal">
+        <div id="exam-terminal-topbar">
+          <button id="exam-run-btn">▶ Run</button>
+          <select id="exam-flags-sel">
+            <option value="gcc|-Wall -Wextra">gcc — Standard</option>
+            <option value="gcc|-Wall -Wextra -Werror -pedantic">gcc — Strict</option>
+            <option value="gcc|-g -Wall">gcc — Debug</option>
+            <option disabled>──────────────</option>
+            <option value="clang|-Wall -Wextra">clang — Standard</option>
+            <option value="clang|-Wall -Wextra -Werror -pedantic">clang — Strict</option>
+            <option value="clang|-g -Wall">clang — Debug</option>
+          </select>
+        </div>
+        <div id="exam-terminal-out"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="action-bar">
+    <button class="btn btn-primary" id="commit-btn">Commit / Show Solution</button>
+  </div>
+</div>
+
+<!-- ── Solution screen ───────────────────────────────────────────────────── -->
+<div id="solution-screen" class="screen" style="display:none">
+  <div id="sol-topbar">
+    <a href="/" class="btn">← Main Tool</a>
+    <span id="sol-q-header">—</span>
+    <span id="sol-timer-frozen"></span>
+  </div>
+  <div id="comparison-area">
+    <div id="user-side">
+      <div class="side-label">Your Answer</div>
+      <div id="user-content"></div>
+    </div>
+    <div id="sol-side">
+      <div class="side-label">Official Solution</div>
+      <div id="sol-content"></div>
+    </div>
+  </div>
+  <div id="sol-action-bar">
+    <button class="btn btn-primary" id="continue-btn">Continue →</button>
+  </div>
+</div>
+
+<!-- ── Picker overlay ─────────────────────────────────────────────────────── -->
+<div id="picker-overlay" style="display:none">
+  <div id="picker-box">
+    <div id="picker-header">
+      <h2 id="picker-title">Select a question</h2>
+      <button class="btn" id="picker-cancel">✕ Cancel</button>
+    </div>
+    <div id="picker-table-wrap">
+      <table class="q-table">
+        <thead>
+          <tr>
+            <th>Year</th><th>Q#</th><th>Title</th><th>Points</th><th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="picker-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const S = {
+  questions:   [],
+  mode:        'random',
+  skipped:     new Set(),
+  seen:        new Set(),
+  current:     null,
+  frozenMs:    0,
+  lastRunOutput: '',
+  sessionStart: Date.now(),
+};
+
+// ── Timer ──────────────────────────────────────────────────────────────────
+let timerInterval = null;
+let timerElapsed  = 0;
+let timerRecMs    = 0;
+
+// ── CodeMirror ─────────────────────────────────────────────────────────────
+let editor = null;
+let activeMarks = [];
+
+// ── Solution text formatter ─────────────────────────────────────────────────
+// Splits solution text into prose and C code segments, renders code in a
+// styled block. Detects code by C type keywords + brace depth tracking.
+function renderSolutionText(text) {
+  const CODE_START = /^\s*(void|int|char|float|double|struct|typedef|static|const|unsigned|long|short)\s+\w/;
+  const lines = text.split('\n');
+  const segments = [];
+  let current = [];
+  let mode = 'prose';
+  let depth = 0;
+
+  for (const line of lines) {
+    if (mode === 'prose') {
+      if (CODE_START.test(line)) {
+        if (current.length) segments.push({ type: 'prose', text: current.join('\n') });
+        current = [line];
+        mode = 'code';
+        depth = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+      } else {
+        current.push(line);
+      }
+    } else {
+      current.push(line);
+      depth += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+      if (depth <= 0) {
+        segments.push({ type: 'code', text: current.join('\n') });
+        current = [];
+        mode = 'prose';
+        depth = 0;
+      }
+    }
+  }
+  if (current.length) segments.push({ type: mode, text: current.join('\n') });
+
+  return segments.map(seg =>
+    seg.type === 'code'
+      ? `<pre class="sol-code">${esc(seg.text)}</pre>`
+      : `<div class="sol-prose">${esc(seg.text)}</div>`
+  ).join('');
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function fmtMs(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function typeBadge(type) {
+  const labels = { c_code: 'C Code', pseudocode: 'Pseudocode', both: 'C + Pseudo', open: 'Open' };
+  return `<span class="type-badge ${type}">${labels[type] || type}</span>`;
+}
+
+function getAvailable() {
+  return S.questions.filter(q => !S.skipped.has(q.id) && !S.seen.has(q.id));
+}
+
+function pickRandom() {
+  const pool = getAvailable();
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+}
+
+// ── Screen switching ───────────────────────────────────────────────────────
+const SCREENS = ['error-screen', 'complete-screen', 'selection-screen',
+                 'question-screen', 'solution-screen'];
+
+function showScreen(id) {
+  SCREENS.forEach(s => { document.getElementById(s).style.display = 'none'; });
+  document.getElementById(id).style.display = 'flex';
+}
+
+// ── Selection screen ───────────────────────────────────────────────────────
+function buildSelTable() {
+  const tbody = document.getElementById('sel-tbody');
+  tbody.innerHTML = '';
+  S.questions.forEach(q => {
+    const tr = document.createElement('tr');
+    if (S.skipped.has(q.id)) tr.classList.add('row-skipped');
+    tr.innerHTML = `
+      <td>${esc(q.year)}</td>
+      <td>Q${esc(q.questionNumber)}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${esc(q.title)}">${esc(q.title)}</td>
+      <td>${q.points}</td>
+      <td>${typeBadge(q.type)}</td>
+      <td>
+        <label class="skip-toggle">
+          <input type="checkbox" data-id="${q.id}" ${S.skipped.has(q.id) ? 'checked' : ''}> Skip
+        </label>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('input[data-id]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = parseInt(cb.dataset.id, 10);
+      if (cb.checked) { S.skipped.add(id); } else { S.skipped.delete(id); }
+      cb.closest('tr').classList.toggle('row-skipped', cb.checked);
+      updateSelCount();
+    });
+  });
+
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = getAvailable().length;
+  document.getElementById('sel-count').textContent =
+    `${n} question${n !== 1 ? 's' : ''} in pool`;
+}
+
+// Mode buttons
+const modeDescs = {
+  random:   'Questions are drawn randomly from the pool each time.',
+  specific: 'You choose which question to answer each time.',
+};
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    S.mode = btn.dataset.mode;
+    document.getElementById('mode-desc').textContent = modeDescs[S.mode];
+  });
+});
+
+// Start button
+document.getElementById('start-btn').addEventListener('click', () => {
+  if (!getAvailable().length) {
+    alert('No questions in pool. Unskip at least one question first.');
+    return;
+  }
+  S.seen.clear();
+  S.sessionStart = Date.now();
+  if (S.mode === 'random') {
+    loadQuestion(pickRandom());
+  } else {
+    showPicker(() => { /* cancelled */ });
+  }
+});
+
+// ── Picker overlay ─────────────────────────────────────────────────────────
+let pickerCancel = null;
+
+function showPicker(onCancel) {
+  pickerCancel = onCancel;
+  const avail = getAvailable();
+  if (!avail.length) { showComplete(); return; }
+
+  const tbody = document.getElementById('picker-tbody');
+  tbody.innerHTML = '';
+  avail.forEach(q => {
+    const tr = document.createElement('tr');
+    tr.className = 'picker-row';
+    tr.innerHTML = `
+      <td>${esc(q.year)}</td>
+      <td>Q${esc(q.questionNumber)}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${esc(q.title)}">${esc(q.title)}</td>
+      <td>${q.points}</td>
+      <td>${typeBadge(q.type)}</td>`;
+    tr.addEventListener('click', () => {
+      document.getElementById('picker-overlay').style.display = 'none';
+      loadQuestion(q);
+    });
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('picker-title').textContent =
+    `Select a question (${avail.length} remaining)`;
+  document.getElementById('picker-overlay').style.display = 'flex';
+}
+
+document.getElementById('picker-cancel').addEventListener('click', () => {
+  document.getElementById('picker-overlay').style.display = 'none';
+  if (pickerCancel) pickerCancel();
+});
+
+// ── Load question ──────────────────────────────────────────────────────────
+const DEFAULT_C = `#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n`;
+
+function loadQuestion(q) {
+  S.current      = q;
+  S.seen.add(q.id);
+  S.lastRunOutput = '';
+
+  // Header and question panel
+  document.getElementById('q-header').textContent =
+    `${q.year} — Q${q.questionNumber}: ${q.title} [${q.points} pts]`;
+  document.getElementById('q-panel').textContent = q.questionText;
+
+  // Reset answer fields
+  document.getElementById('thoughts-ta').value    = '';
+  document.getElementById('pseudo-ta').value      = '';
+  document.getElementById('exam-terminal-out').textContent = '';
+  clearMarksAll();
+
+  // Init or reset CodeMirror
+  if (!editor) {
+    editor = CodeMirror.fromTextArea(document.getElementById('cm-editor'), {
+      mode:            'text/x-csrc',
+      theme:           'monokai',
+      lineNumbers:     true,
+      gutters:         ['CodeMirror-linenumbers'],
+      styleActiveLine: true,
+      indentUnit:      4,
+      tabSize:         4,
+      indentWithTabs:  false,
+      extraKeys: {
+        Tab:          cm  => cm.replaceSelection('    '),
+        'Ctrl-Enter': ()  => document.getElementById('exam-run-btn').click(),
+      },
+    });
+  }
+  editor.setValue(DEFAULT_C);
+  editor.clearHistory();
+
+  // Configure panels for question type
+  applyType(q.type);
+
+  // Show question screen, then refresh editor
+  showScreen('question-screen');
+  setTimeout(() => editor && editor.refresh(), 40);
+
+  // Timer
+  timerRecMs = q.points * 60 * 1000;
+  document.getElementById('timer-rec').textContent = `Rec: ${q.points}m`;
+  startTimer();
+}
+
+// ── Panel layout by question type ──────────────────────────────────────────
+function applyType(type) {
+  const pseudoPane  = document.getElementById('pseudo-pane');
+  const editorPane  = document.getElementById('editor-pane');
+  const terminal    = document.getElementById('exam-terminal');
+  const answerLeft  = document.getElementById('answer-left');
+  const answerRight = document.getElementById('answer-right');
+
+  const pseudoLabel = document.querySelector('#pseudo-pane .a-pane-label');
+
+  if (type === 'pseudocode') {
+    pseudoPane.style.display  = 'flex';
+    editorPane.style.display  = 'none';
+    terminal.style.display    = 'none';
+    answerLeft.style.width    = '100%';
+    answerLeft.style.borderRight = 'none';
+    answerRight.style.display = 'none';
+    pseudoLabel.textContent   = 'Pseudocode';
+  } else if (type === 'c_code') {
+    pseudoPane.style.display  = 'none';
+    editorPane.style.display  = 'flex';
+    terminal.style.display    = 'flex';
+    answerLeft.style.width    = '35%';
+    answerLeft.style.borderRight = '1px solid var(--border)';
+    answerRight.style.display = 'flex';
+    pseudoLabel.textContent   = 'Pseudocode';
+  } else if (type === 'both') {
+    pseudoPane.style.display  = 'flex';
+    editorPane.style.display  = 'flex';
+    terminal.style.display    = 'flex';
+    answerLeft.style.width    = '35%';
+    answerLeft.style.borderRight = '1px solid var(--border)';
+    answerRight.style.display = 'flex';
+    pseudoLabel.textContent   = 'Pseudocode';
+  } else { // open — generic text answer only
+    pseudoPane.style.display  = 'flex';
+    editorPane.style.display  = 'none';
+    terminal.style.display    = 'none';
+    answerLeft.style.width    = '100%';
+    answerLeft.style.borderRight = 'none';
+    answerRight.style.display = 'none';
+    pseudoLabel.textContent   = 'Answer';
+  }
+}
+
+// ── Timer ──────────────────────────────────────────────────────────────────
+function startTimer() {
+  clearInterval(timerInterval);
+  timerElapsed = 0;
+  const disp = document.getElementById('timer-display');
+  disp.className = '';
+  disp.textContent = '00:00';
+  const t0 = Date.now();
+  timerInterval = setInterval(() => {
+    timerElapsed = Date.now() - t0;
+    disp.textContent = fmtMs(timerElapsed);
+    if      (timerElapsed >= timerRecMs * 1.5) { disp.className = 'danger'; }
+    else if (timerElapsed >= timerRecMs)        { disp.className = 'warn';   }
+    else                                         { disp.className = '';       }
+  }, 500);
+}
+
+function freezeTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  S.frozenMs = timerElapsed;
+}
+
+// ── Run button ─────────────────────────────────────────────────────────────
+const examRunBtn  = document.getElementById('exam-run-btn');
+const examFlagSel = document.getElementById('exam-flags-sel');
+const examOut     = document.getElementById('exam-terminal-out');
+
+function clearMarksAll() {
+  activeMarks.forEach(m => m.clear());
+  activeMarks = [];
+}
+
+function applyErrors(errors) {
+  clearMarksAll();
+  if (!editor) return;
+  errors.forEach(({ line, type, message }) => {
+    const li = line - 1;
+    if (li < 0 || li >= editor.lineCount()) return;
+    const len  = editor.getLine(li).length;
+    const mark = editor.markText(
+      { line: li, ch: 0 }, { line: li, ch: len || 1 },
+      { className: type === 'warning' ? 'cm-warning-underline' : 'cm-error-underline', title: message }
+    );
+    mark._errMsg = message;
+    activeMarks.push(mark);
+  });
+}
+
+examRunBtn.addEventListener('click', async () => {
+  examRunBtn.disabled  = true;
+  examFlagSel.disabled = true;
+  examOut.textContent  = 'Running...';
+  clearMarksAll();
+
+  const code = editor ? editor.getValue() : '';
+  const [compiler, flags] = examFlagSel.value.split('|');
+
+  try {
+    const res  = await fetch('/run', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ code, compiler, flags }),
+    });
+    const data = await res.json();
+
+    examOut.textContent  = data.output || '';
+    S.lastRunOutput      = data.output || '';
+    const el = document.createElement('span');
+    el.textContent       = `\n[Exit code: ${data.exitCode}]`;
+    el.className         = data.exitCode === 0 ? 'exit-ok' : 'exit-err';
+    examOut.appendChild(el);
+    S.lastRunOutput     += `\n[Exit code: ${data.exitCode}]`;
+
+    if (data.errors?.length) applyErrors(data.errors);
+  } catch (err) {
+    examOut.textContent = 'Server error: ' + err.message;
+  } finally {
+    examRunBtn.disabled  = false;
+    examFlagSel.disabled = false;
+    examOut.scrollTop    = examOut.scrollHeight;
+  }
+});
+
+// Ctrl+Enter to run from anywhere
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); examRunBtn.click(); }
+});
+
+// ── Commit / show solution ─────────────────────────────────────────────────
+document.getElementById('commit-btn').addEventListener('click', () => {
+  freezeTimer();
+  const q        = S.current;
+  const thoughts = document.getElementById('thoughts-ta').value;
+  const pseudo   = document.getElementById('pseudo-ta').value;
+  const code     = editor ? editor.getValue() : '';
+  const runOut   = S.lastRunOutput;
+
+  // Build user-side HTML
+  let html = '';
+
+  if (thoughts.trim()) {
+    html += `<div class="ans-section">
+      <div class="ans-section-label">General Thoughts</div>
+      <div class="ans-block">${esc(thoughts)}</div>
+    </div>`;
+  }
+
+  if ((q.type === 'pseudocode' || q.type === 'both') && pseudo.trim()) {
+    html += `<div class="ans-section">
+      <div class="ans-section-label">Pseudocode</div>
+      <div class="ans-block">${esc(pseudo)}</div>
+    </div>`;
+  }
+
+  if (q.type === 'open' && pseudo.trim()) {
+    html += `<div class="ans-section">
+      <div class="ans-section-label">Answer</div>
+      <div class="ans-block">${esc(pseudo)}</div>
+    </div>`;
+  }
+
+  if (q.type === 'c_code' || q.type === 'both') {
+    html += `<div class="ans-section">
+      <div class="ans-section-label">C Code</div>
+      <div class="ans-block code">${esc(code)}</div>
+    </div>`;
+    if (runOut.trim()) {
+      html += `<div class="ans-section">
+        <div class="ans-section-label">Terminal Output</div>
+        <div class="ans-block code">${esc(runOut)}</div>
+      </div>`;
+    }
+  }
+
+  if (!html) {
+    html = `<p style="color:var(--text-muted);font-style:italic;font-size:13px">
+              No answer provided.</p>`;
+  }
+
+  document.getElementById('user-content').innerHTML    = html;
+  document.getElementById('sol-content').innerHTML     = renderSolutionText(q.solutionText);
+  document.getElementById('sol-q-header').textContent  =
+    `${q.year} — Q${q.questionNumber}: ${q.title} [${q.points} pts]`;
+  document.getElementById('sol-timer-frozen').textContent =
+    `Time: ${fmtMs(S.frozenMs)}`;
+
+  showScreen('solution-screen');
+});
+
+// ── Continue ───────────────────────────────────────────────────────────────
+document.getElementById('continue-btn').addEventListener('click', () => {
+  if (S.mode === 'random') {
+    const next = pickRandom();
+    if (!next) { showComplete(); } else { loadQuestion(next); }
+  } else {
+    showPicker(() => showScreen('solution-screen'));
+  }
+});
+
+// ── Session complete ───────────────────────────────────────────────────────
+function showComplete() {
+  const elapsed = Date.now() - S.sessionStart;
+  document.getElementById('complete-stats').innerHTML =
+    `Questions answered: <strong>${S.seen.size}</strong><br>
+     Total session time: <strong>${fmtMs(elapsed)}</strong>`;
+  showScreen('complete-screen');
+}
+
+document.getElementById('restart-btn').addEventListener('click', () => {
+  S.seen.clear();
+  S.skipped.clear();
+  buildSelTable();
+  showScreen('selection-screen');
+});
+
+// ── Download .c ────────────────────────────────────────────────────────────
+document.getElementById('dl-btn').addEventListener('click', () => {
+  const q = S.current;
+  if (!q) return;
+
+  const thoughts = document.getElementById('thoughts-ta').value;
+  const pseudo   = document.getElementById('pseudo-ta').value;
+  const code     = editor ? editor.getValue() : '';
+
+  const pseudoSec = (q.type === 'pseudocode' || q.type === 'both') ? pseudo : 'N/A';
+  const codeSec   = (q.type === 'c_code'     || q.type === 'both') ? code   : '';
+
+  const header =
+    `/*\nExercise (${q.year} - Q${q.questionNumber}: ${q.title} [${q.points} points]):\n` +
+    `${q.questionText}\n\nThought Process:\n${thoughts}\n\nPseudocode:\n${pseudoSec}\n*/\n\n`;
+
+  const blob = new Blob([header + codeSec], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${q.year}_Q${q.questionNumber}.c`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('/api/questions');
+    if (!res.ok) { showScreen('error-screen'); return; }
+    const qs = await res.json();
+    if (!Array.isArray(qs) || !qs.length) { showScreen('error-screen'); return; }
+    S.questions = qs;
+    buildSelTable();
+    showScreen('selection-screen');
+  } catch {
+    showScreen('error-screen');
+  }
+}
+
+init();
+</script>
+</body>
+</html>

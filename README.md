@@ -38,6 +38,21 @@ Once Clang is on your PATH, restart the server and select any **clang —** opti
 
 ---
 
+## Mock Exam Mode
+
+Practice on real past UZH exam questions extracted from PDF files.
+
+1. Place past exam PDFs in `Old_Excames/`
+   - Naming: `FinalExam2022.pdf`, `Solution2022.pdf` (years 2022–2024)
+     cd "Localhost_C_run"
+2. Run `npm run parse` once to generate `Mock_Exam/questions.json`
+3. Start the server: `npm start`
+4. Open **http://localhost:3000/exam** or click **Mock Exam →** in the main tool
+
+Features: random or specific question mode, per-question timer, C code editor + terminal, side-by-side solution comparison, and `.c` file download with your notes.
+
+---
+
 ## Features
 
 - **Exercise bar** — label your current task

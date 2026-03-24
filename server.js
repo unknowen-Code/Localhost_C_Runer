@@ -88,7 +88,20 @@ app.post('/run', (req, res) => {
   });
 });
 
+app.get('/exam', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Mock_Exam', 'exam.html'));
+});
+
+app.get('/api/questions', (req, res) => {
+  const qPath = path.join(__dirname, 'Mock_Exam', 'questions.json');
+  if (!fs.existsSync(qPath)) {
+    return res.status(404).json({ error: 'questions.json not found. Run: npm run parse' });
+  }
+  res.sendFile(qPath);
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`C runner listening at http://localhost:${PORT}`);
+  console.log(`Mock Exam at http://localhost:${PORT}/exam`);
 });
