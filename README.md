@@ -42,7 +42,7 @@ Once Clang is on your PATH, restart the server and select any **clang —** opti
 
 Practice on real past UZH exam questions extracted from PDF files.
 
-1. Place past exam PDFs in `Old_Excames/`
+1. Place past exam PDFs in `Old_Exames/`
    - Naming: `FinalExam2022.pdf`, `Solution2022.pdf` (years 2022–2024)
 2. Run `npm run parse` once to generate `Mock_Exam/questions.json`
 3. Start the server: `npm start`
